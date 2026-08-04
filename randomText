@@ -1,0 +1,244 @@
+For an architecture presentation, I would describe the layers in terms of responsibility, purpose, and architectural value. The key message is that each layer exists to create separation of concerns, reduce coupling, and allow independent evolution.
+
+Layered Architecture Overview
+1. Channel Layer (Single SPA + Micro Frontends)
+Purpose
+
+Provides the user-facing experience by composing independent frontend modules for different business journeys.
+
+Responsibilities
+Render user interfaces
+Manage user interactions and navigation
+Perform client-side validation
+Maintain frontend state
+Communicate with Experience APIs
+Why do we need it?
+
+Separates frontend development from backend complexity and allows teams to independently develop and deploy business-focused UI components.
+
+Example:
+
+Quote MFE
+Driver MFE
+Vehicle MFE
+Claims MFE
+2. Experience API Layer (Backend for Frontend)
+Purpose
+
+Provides APIs optimized for a specific user experience by aggregating and transforming backend capabilities into UI-friendly models.
+
+Responsibilities
+Serve frontend applications
+Aggregate multiple backend calls
+Shape responses for UI needs
+Handle channel-specific requirements
+Reduce frontend-to-backend coupling
+Why do we need it?
+
+Frontend applications should not understand backend system complexity. This layer prevents the UI from directly depending on multiple services, legacy systems, or data models.
+
+Example:
+
+Instead of:
+
+UI
+ |
+ +-- Driver API
+ |
+ +-- Vehicle API
+ |
+ +-- Prior Insurance API
+
+The UI calls:
+
+Quote Experience API
+
+which orchestrates the required services.
+
+3. Capability API Layer
+Purpose
+
+Exposes reusable business capabilities as standardized APIs independent of any specific consumer.
+
+Responsibilities
+Define business capability contracts
+Provide reusable services across channels
+Hide backend implementation details
+Enforce capability-level security
+
+Examples:
+
+Driver Capability API
+Vehicle Capability API
+Prior Insurance Capability API
+Location Capability API
+Why do we need it?
+
+Business capabilities should be reusable across multiple experiences.
+
+Example:
+
+Driver capability may be used by:
+
+Quote
+Policy Change
+Renewal
+Claims
+
+Without this layer, each application would build its own driver integration.
+
+4. Domain Services Layer
+Purpose
+
+Contains business rules and domain behavior that represent insurance processes.
+
+Responsibilities
+Apply business rules
+Perform validations
+Execute workflows
+Make business decisions
+Maintain domain logic
+
+Examples:
+
+Driver Eligibility Service
+
+Prior Insurance Verification Service
+
+Underwriting Rule Service
+Why do we need it?
+
+Business logic should not live in APIs or UI. Separating domain logic allows business rules to evolve without impacting consumers or systems.
+
+Example:
+
+A driver eligibility rule changes:
+
+Before:
+
+Driver must be over 18
+
+After:
+
+Driver must be over 16 with restrictions
+
+Only the domain service changes.
+
+5. Integration API Layer
+Purpose
+
+Provides controlled connectivity between business services and external/core systems.
+
+Responsibilities
+Integrate with Guidewire, mainframe, vendors
+Transform data formats
+Handle authentication
+Manage retries and errors
+Abstract system-specific APIs
+
+Examples:
+
+Guidewire Adapter API
+
+DMV Integration API
+
+Payment Provider API
+Why do we need it?
+
+Core systems should not dictate your application architecture.
+
+This layer protects your business services from:
+
+Legacy protocols
+Vendor-specific models
+System upgrades
+
+Example:
+
+Today:
+
+Capability API
+       |
+Guidewire PolicyCenter
+
+Tomorrow:
+
+Capability API
+       |
+New Policy Administration System
+
+Only the integration layer changes.
+
+6. Systems of Record Layer
+Purpose
+
+Provides authoritative data storage and transactional processing.
+
+Examples:
+
+Guidewire PolicyCenter
+Guidewire ClaimCenter
+Billing Systems
+Legacy Mainframe
+External Data Providers
+Responsibilities
+Store business data
+Execute core transactions
+Maintain system-of-record responsibilities
+Why do we need it?
+
+Core systems remain the source of truth, but they should not directly expose their models to channels.
+
+Why So Many Layers?
+
+A common question from stakeholders is:
+
+"Why can't the UI directly call the backend?"
+
+The answer:
+
+Because each layer protects the layer above it from changes below it.
+
+Without separation:
+
+UI
+ |
+Guidewire
+
+Problems:
+
+UI becomes coupled to Guidewire data models
+Backend changes impact frontend
+Business rules spread everywhere
+Difficult to replace systems
+Difficult to reuse capabilities
+
+With layered architecture:
+
+UI
+ |
+Experience API
+ |
+Capability API
+ |
+Domain Services
+ |
+Integration API
+ |
+Core Systems
+
+Benefits:
+
+Benefit	How it helps
+Loose coupling	Systems can evolve independently
+Reuse	Capabilities serve multiple applications
+Faster delivery	Teams work independently
+Easier modernization	Replace legacy systems behind APIs
+Better governance	Clear ownership boundaries
+Improved resiliency	Failures isolated by layer
+Better security	Controlled access paths
+One-sentence summary for your architecture slide
+
+"The layered architecture separates user experience, business capabilities, domain logic, system integration, and core systems, enabling independent evolution, reuse, and modernization while reducing dependency on legacy platforms."
+
+For an insurance modernization program (Guidewire + AWS + Microservices), this is the type of explanation I would put directly into an architecture strategy document or Confluence page.
