@@ -1,0 +1,29 @@
+Purpose
+
+Provides a centralized entry point for all external and internal consumers accessing application APIs. The API Gateway manages API traffic, security, and operational policies before requests reach the Experience API layer.
+
+It acts as the front door of the application ecosystem, protecting backend services while providing consistent API management capabilities.
+
+Responsibilities
+Provide a single entry point for all API consumers
+Perform authentication and authorization validation
+Enforce API security policies
+Apply rate limiting and throttling policies
+Manage API routing and request forwarding
+Perform request/response filtering and transformation (where appropriate)
+Enforce API versioning and lifecycle management
+Provide centralized monitoring, logging, and analytics
+Protect backend services from excessive or malicious traffic
+Support WAF integration and threat protection
+Why do we need it?
+
+Without an API Gateway, every Experience API would need to independently implement common concerns such as authentication, rate limiting, security controls, and traffic management.
+
+This creates:
+
+Duplicate security implementations
+Inconsistent policies across APIs
+Increased operational complexity
+Difficulty managing API consumers at scale
+
+The API Gateway creates a centralized governance and security boundary, allowing Experience APIs to focus on business-specific orchestration and user experience needs rather than infrastructure concerns.
