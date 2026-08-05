@@ -1,0 +1,190 @@
+Current Architecture Issues: Experience API / Core API Directly Calling Guidewire
+1. Tight Coupling to Guidewire
+Experience APIs and Core APIs are directly coupled to Guidewire APIs and data models.
+Changes to Guidewire APIs, schemas, or business processes require changes across multiple consuming applications.
+Guidewire-specific concepts are leaking into channel-facing APIs, reducing flexibility.
+Difficult to replace, upgrade, or introduce additional policy platforms in the future.
+2. Lack of Domain Boundary and Business Capability Layer
+Business capabilities are not clearly separated from system integration concerns.
+APIs are orchestrating Guidewire transactions instead of invoking business capabilities.
+Business logic may become duplicated across Experience APIs and Core APIs.
+No single ownership point for business capabilities such as Policy, Driver, Vehicle, Quote, and Rating.
+3. Resiliency Challenges (Critical)
+Single Point of Failure Dependency
+Experience APIs and Core APIs have a direct dependency on Guidewire availability.
+Any Guidewire outage immediately impacts all consuming applications.
+No abstraction layer exists to provide alternate service behavior during downstream failures.
+Lack of Graceful Degradation
+Applications cannot easily switch to read-only capability during Guidewire outages.
+No mechanism exists to serve customer requests from read replicas or cached data.
+Customers experience complete service failure instead of limited functionality.
+
+Example:
+
+Current:
+
+Customer
+   |
+Experience API
+   |
+Guidewire DOWN
+   |
+Customer Request Failed
+
+Target:
+
+Customer
+   |
+Experience API
+   |
+Capability Layer
+   |
+Guidewire DOWN
+   |
+Read Replica / Alternate Source
+   |
+Read-only Experience
+4. Insufficient Failure Isolation
+A Guidewire performance issue can cascade to multiple upstream applications.
+Long-running Guidewire requests can consume API resources.
+No centralized circuit breaker strategy exists.
+No consistent timeout policies across consumers.
+
+Potential impacts:
+
+Thread exhaustion
+Connection pool exhaustion
+Increased response times
+Cascading failures
+5. Inconsistent Resiliency Patterns
+Each API implements its own approach for:
+Timeout handling
+Retry logic
+Error handling
+Circuit breakers
+Fallback behavior
+No enterprise resiliency standards are enforced.
+Different teams may implement conflicting recovery strategies.
+6. No Centralized Integration Governance
+Multiple applications directly manage Guidewire integrations.
+Authentication, token management, logging, and monitoring are duplicated.
+Guidewire API consumption patterns are inconsistent.
+Difficult to enforce enterprise standards.
+7. Increased Operational Complexity
+Production troubleshooting requires understanding multiple direct integrations.
+No centralized view of Guidewire dependency health.
+Difficult to determine which applications are impacted during Guidewire incidents.
+Incident resolution requires coordination across multiple teams.
+8. Poor Observability
+End-to-end transaction tracing is difficult.
+Customer journey visibility is limited.
+Difficult to identify whether failures originate from:
+Experience API
+Core API
+Guidewire
+Network
+Database
+
+Missing capabilities:
+
+Distributed tracing
+Dependency monitoring
+Business transaction monitoring
+SLA tracking
+9. Scalability Concerns
+Increasing customer traffic directly increases load on Guidewire.
+No capability layer to aggregate, optimize, or cache requests.
+Duplicate requests may hit Guidewire from multiple consumers.
+Difficult to introduce caching strategies.
+10. Duplicate Integration Logic
+
+Multiple applications may implement:
+
+Guidewire authentication
+Request transformation
+Response mapping
+Error handling
+Retry logic
+API version handling
+
+This creates:
+
+Code duplication
+Higher maintenance cost
+Inconsistent behavior
+11. Difficulty Supporting Multiple Systems of Record
+
+Future state may require:
+
+Guidewire PolicyCenter
+Legacy Mainframe Policy System
+Guidewire Read Replica
+Future policy platform
+
+Current architecture makes this difficult because consumers directly know the source system.
+
+Example:
+
+Current:
+
+Experience API
+      |
+      |
+Guidewire
+
+Future requirement:
+
+Policy Capability
+      |
+      |
+Policy Gateway
+      |
+      +---- Guidewire
+      |
+      +---- Mainframe
+      |
+      +---- Read Replica
+12. Limited Support for AI and New Channels
+AI assistants cannot easily reuse existing business capabilities.
+New channels require direct knowledge of Guidewire APIs.
+AI integrations may create another set of point-to-point integrations.
+Business capabilities are not exposed as reusable enterprise services.
+13. Difficulty Implementing Enterprise Process Orchestration
+End-to-end journeys are distributed across Experience APIs.
+Long-running processes are difficult to manage.
+No centralized handling for:
+Workflow state
+Compensation
+Human approval
+Exception management
+14. Security Concerns
+Multiple applications maintain direct Guidewire access.
+Larger attack surface.
+Difficult to enforce consistent:
+Authorization policies
+API throttling
+Audit requirements
+Data masking
+15. Testing Complexity
+Every consumer requires Guidewire integration testing.
+Difficult to test applications independently.
+Requires Guidewire availability for many application test cycles.
+Limited ability to mock or virtualize downstream dependencies.
+Executive Summary Slide (Short Version)
+
+If you need a single slide, I would summarize:
+
+Current Architecture Challenges
+
+Direct coupling between Experience/Core APIs and Guidewire.
+Lack of business capability abstraction.
+Guidewire availability becomes a customer-facing dependency.
+Limited resiliency patterns (timeouts, circuit breakers, fallback).
+No graceful degradation during downstream outages.
+Duplicate integration logic across applications.
+Difficult to support multiple systems of record.
+Limited reuse for AI, mobile, and future channels.
+Poor end-to-end observability and operational visibility.
+Increased cost and complexity of future modernization.
+
+For your target-state architecture, these bullets naturally justify introducing the Capability API Layer, Domain Service Layer, Integration Layer, and Resiliency Framework you have been designing.
