@@ -4,9 +4,11 @@ The document I shared represents my overall analysis of the current architecture
 
 For the short term, I am focusing on the Auto Quote process to identify specific resiliency improvement opportunities. However, based on my initial assessment, the current tight coupling between some of the services may limit the level of resiliency we can achieve without addressing some of the underlying architectural constraints.
 
-I was not aware that a broader architecture overhaul was already underway. That is great news, and it will help ensure that the short-term improvements align with the longer-term strategic direction.
+I was under the impression that you were focusing on the core services, while my focus was to review the non-core services from a resiliency perspective. I was not aware that a broader architecture overhaul was already underway. That is great news, and it will help ensure that the short-term improvements align with the longer-term strategic direction.
 
-I will continue focusing on the Auto Quote process and look for opportunities where we can make meaningful resiliency improvements within the current architecture.
+Let's discuss this further in our next meeting, as you suggested, so we can align on the scope, priorities, and approach.
+
+I will continue reviewing the Auto Quote process and identify areas where we can make meaningful resiliency improvements within the current architecture.
 
 Thanks,
 Hamid
