@@ -1,0 +1,12 @@
+Thank you for the feedback.
+
+The document I shared represents my overall analysis of the current architecture and my observations from a resiliency perspective. In my view, achieving the level of resiliency expected for an organization like USAA, given the scale and volume of customers, will require a more layered architecture approach in the long term.
+
+For the short term, I am focusing on the Auto Quote process to identify specific resiliency improvement opportunities. However, based on my initial assessment, the current tight coupling between some of the services may limit the level of resiliency we can achieve without addressing some of the underlying architectural constraints.
+
+I was not aware that a broader architecture overhaul was already underway. That is great news, and it will help ensure that the short-term improvements align with the longer-term strategic direction.
+
+I will continue focusing on the Auto Quote process and look for opportunities where we can make meaningful resiliency improvements within the current architecture.
+
+Thanks,
+Hamid
