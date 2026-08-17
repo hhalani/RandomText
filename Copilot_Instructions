@@ -1,0 +1,652 @@
+Absolutely. For your situation, I would make the instructions **architecture-focused rather than overly generic coding instructions**. The goal is to make Opus 4.5 understand that it is helping you **incrementally transform an existing Experience API monolith into Experience → Capability → Domain → Integration**, while preserving existing behavior.
+
+GitHub recommends placing repository-wide instructions at `.github/copilot-instructions.md`; Copilot automatically uses them for repository interactions. ([GitHub Docs][1])
+
+Below is a version I would actually use for your project.
+
+# Copilot Instructions — Architecture & Development Guidelines
+
+## 1. Role
+
+Act as a senior software engineer and solution architect working on this repository.
+
+The primary architectural goal is to incrementally evolve the existing monolithic Experience API into a layered architecture consisting of:
+
+**Experience API → Capability API → Domain Service → Integration Layer → External Systems**
+
+The existing application is production code. Do not assume that a rewrite is appropriate. Prefer incremental refactoring that preserves existing behavior and minimizes production risk.
+
+---
+
+# 2. Target Architecture
+
+The target architecture should generally follow these layers:
+
+```text
+Client / UI
+     |
+     v
+Experience API
+     |
+     v
+Capability API
+     |
+     v
+Domain Service
+     |
+     v
+Integration Layer
+     |
+     +---- Guidewire PolicyCenter
+     +---- Earnix
+     +---- Other External Systems
+```
+
+The exact number of services and boundaries must be determined from the existing business capabilities and dependencies.
+
+Do not create services merely to follow a pattern. A service boundary must have a clear business, ownership, scalability, deployment, or resiliency justification.
+
+---
+
+# 3. Experience API Responsibilities
+
+Experience APIs are responsible for:
+
+* Exposing APIs optimized for the consumer experience.
+* Aggregating information from one or more capabilities when necessary.
+* Performing request/response transformation appropriate for the consumer.
+* Handling consumer-specific concerns.
+* Orchestrating calls to Capability APIs.
+
+Experience APIs must NOT:
+
+* Contain significant business rules.
+* Directly call Guidewire, Earnix, databases, or other external systems.
+* Contain external-system-specific integration logic.
+* Depend directly on Guidewire SDK/client implementations.
+* Become another domain service.
+
+Avoid creating a "god" Experience API.
+
+---
+
+# 4. Capability API Responsibilities
+
+A Capability represents a meaningful business capability.
+
+Examples may include:
+
+* Vehicle Management
+* Driver Management
+* Quote Management
+* Policy Management
+* Coverage Management
+
+Capability APIs are responsible for:
+
+* Exposing capability-specific operations.
+* Coordinating domain services.
+* Enforcing capability-level API contracts.
+* Translating consumer/API requests into domain operations.
+* Returning capability-level responses.
+
+Capability APIs should not contain complex business rules or external-system integration logic.
+
+---
+
+# 5. Domain Service Responsibilities
+
+Domain Services contain business behavior and business orchestration.
+
+They should:
+
+* Implement business rules.
+* Coordinate domain operations.
+* Make business decisions.
+* Operate on domain models.
+* Remain independent of external-system-specific implementations.
+
+Domain Services should NOT directly depend on:
+
+* Guidewire-specific clients
+* Earnix-specific clients
+* HTTP client implementations
+* External-system DTOs
+* Database-specific infrastructure
+* Messaging infrastructure
+
+The domain should depend on abstractions/interfaces where appropriate.
+
+---
+
+# 6. Integration Layer
+
+All communication with external systems should be isolated behind the Integration Layer.
+
+Examples:
+
+```text
+PolicyCenter Adapter
+Earnix Adapter
+Database Adapter
+External REST Adapter
+Kafka Adapter
+```
+
+The Integration Layer is responsible for:
+
+* External API communication.
+* Authentication/authorization required for external systems.
+* External request/response mapping.
+* External-system-specific DTOs.
+* Protocol-specific concerns.
+* Error translation.
+* Timeout configuration.
+* Retry configuration where appropriate.
+* Circuit breaker configuration where appropriate.
+* External-system observability.
+
+Avoid leaking external-system models into the domain layer.
+
+For example, this is preferred:
+
+```text
+Domain Service
+      |
+      v
+PolicyRepository / PolicyGateway interface
+      |
+      v
+PolicyCenter Adapter
+      |
+      v
+Guidewire PolicyCenter
+```
+
+rather than:
+
+```text
+Domain Service
+      |
+      v
+Guidewire Client
+      |
+      v
+PolicyCenter
+```
+
+---
+
+# 7. External System Coupling
+
+Avoid direct communication between business services and external SaaS systems.
+
+For example, avoid:
+
+```text
+Capability API
+      |
+      +------> Guidewire PolicyCenter
+```
+
+Prefer:
+
+```text
+Capability API
+      |
+      v
+Domain Service
+      |
+      v
+Integration Layer
+      |
+      v
+Guidewire PolicyCenter
+```
+
+Similarly, avoid direct coupling such as:
+
+```text
+PolicyCenter <------> Earnix
+```
+
+when the application architecture requires controlled integration.
+
+External systems should not become tightly coupled to each other through application business logic.
+
+---
+
+# 8. Guidewire PolicyCenter
+
+Guidewire PolicyCenter is an external system from the perspective of this application.
+
+Guidewire-specific implementation details must remain in the Integration Layer.
+
+Do not allow:
+
+* Guidewire DTOs
+* Guidewire SDK types
+* Guidewire-specific exceptions
+* Guidewire authentication details
+* Guidewire API implementation details
+
+to leak into Experience APIs or Domain Services.
+
+If the existing code violates this rule, identify the dependency and propose an incremental refactoring strategy rather than blindly moving code.
+
+---
+
+# 9. Earnix
+
+Treat Earnix as an external system.
+
+Earnix-specific communication, DTOs, authentication, error handling, and protocol details belong in the Integration Layer.
+
+Do not introduce direct coupling between Domain Services and Earnix implementation classes.
+
+---
+
+# 10. Command and Query Separation
+
+Where appropriate, distinguish between command and query operations.
+
+Commands:
+
+```text
+Capability
+    |
+    v
+Domain Service
+    |
+    v
+Integration Adapter
+    |
+    v
+System of Record
+```
+
+Queries may use an optimized read model/read replica where architecturally appropriate:
+
+```text
+Capability
+    |
+    v
+Query Domain Service
+    |
+    v
+Query Adapter
+    |
+    v
+Read Model / Read Replica
+```
+
+Do not introduce CQRS simply because it is a recognized pattern. Use it only where there is a clear business, performance, scalability, or resiliency justification.
+
+---
+
+# 11. Resiliency
+
+Resiliency is a key architectural objective.
+
+External calls should be evaluated for:
+
+* Connection timeout
+* Response timeout
+* Circuit breaker
+* Retry
+* Backoff
+* Bulkhead/isolation
+* Rate limiting
+* Fallback where appropriate
+* Idempotency
+* Failure propagation
+* Partial failure handling
+
+Do not blindly add retries or circuit breakers.
+
+For every resiliency mechanism, consider:
+
+1. What failure is being prevented?
+2. Where should the failure be contained?
+3. What happens when the dependency is unavailable?
+4. Could retry amplify the problem?
+5. Is the operation idempotent?
+6. What is the expected user experience?
+
+Circuit breakers should normally protect calls to external dependencies rather than simply being added to every method.
+
+---
+
+# 12. Timeouts
+
+Every external synchronous call must have an explicit timeout strategy.
+
+Never rely blindly on default HTTP client timeouts.
+
+Timeouts should be appropriate for:
+
+* Business operation
+* Downstream SLA
+* User-facing SLA
+* Retry policy
+* Overall request deadline
+
+Avoid creating timeout configurations that exceed the upstream request timeout.
+
+---
+
+# 13. Error Handling
+
+Errors should be translated at architectural boundaries.
+
+External-system-specific errors should not leak directly to consumers.
+
+Preferred flow:
+
+```text
+External System Error
+        |
+        v
+Integration Layer
+        |
+        v
+Application/Domain Error
+        |
+        v
+Capability API
+        |
+        v
+Consumer-specific Response
+```
+
+Do not expose Guidewire or Earnix error structures directly through Experience APIs.
+
+---
+
+# 14. Caching
+
+Caching must have a clearly defined ownership boundary.
+
+Before adding a cache, determine:
+
+* What data is being cached?
+* Who owns the data?
+* How frequently does it change?
+* What is the acceptable staleness?
+* What invalidates the cache?
+* What happens when the cache is unavailable?
+* Is the cache local or distributed?
+* Does caching create consistency problems?
+
+Do not add caching simply to improve performance without understanding data consistency requirements.
+
+---
+
+# 15. Observability
+
+New or refactored components should provide appropriate:
+
+* Structured logging
+* Correlation IDs
+* Distributed tracing
+* Metrics
+* Dependency metrics
+* Error metrics
+* Latency metrics
+
+Do not log:
+
+* Passwords
+* Tokens
+* Secrets
+* Sensitive customer information
+* Full request/response payloads unless explicitly approved
+
+Use the repository's existing observability framework rather than introducing a competing framework.
+
+---
+
+# 16. Architecture Before Implementation
+
+For significant refactoring tasks, DO NOT immediately modify code.
+
+First:
+
+1. Analyze the existing implementation.
+2. Identify dependencies.
+3. Identify business responsibilities.
+4. Identify external-system dependencies.
+5. Identify existing resiliency mechanisms.
+6. Identify existing tests.
+7. Identify architectural violations.
+8. Propose the target structure.
+9. Identify risks.
+10. Create an incremental implementation plan.
+
+When the task is ambiguous, ask for clarification rather than inventing business requirements.
+
+---
+
+# 17. Incremental Refactoring
+
+Do not attempt to transform the entire monolith in one operation.
+
+Prefer:
+
+```text
+Monolith
+   |
+   +--> Identify Capability
+           |
+           +--> Extract Domain logic
+           |
+           +--> Extract Integration dependency
+           |
+           +--> Add/Improve tests
+           |
+           +--> Validate behavior
+           |
+           +--> Refactor next capability
+```
+
+Each refactoring step should be independently reviewable.
+
+Preserve existing APIs and behavior unless the task explicitly requires an API or behavior change.
+
+---
+
+# 18. Before Moving Code
+
+Before moving a class or method, determine:
+
+* Who calls it?
+* What does it call?
+* Does it contain business logic?
+* Does it contain integration logic?
+* Does it contain presentation/API logic?
+* Does it access a database?
+* Does it depend on Guidewire?
+* Does it depend on Earnix?
+* Does it have side effects?
+* What tests cover it?
+* Are there hidden dependencies?
+
+Do not move code based solely on package names.
+
+---
+
+# 19. Dependency Direction
+
+Preferred dependency direction:
+
+```text
+Experience
+    ↓
+Capability
+    ↓
+Domain
+    ↓
+Integration
+    ↓
+External Systems
+```
+
+Avoid dependencies pointing upward.
+
+For example:
+
+```text
+Domain → Experience       NOT ALLOWED
+Integration → Experience NOT ALLOWED
+Domain → Controller      NOT ALLOWED
+Domain → Guidewire SDK   AVOID
+```
+
+Infrastructure implementations should depend on domain/application abstractions where appropriate.
+
+---
+
+# 20. API Design
+
+APIs should:
+
+* Have clear business-oriented resource/operation names.
+* Avoid exposing internal implementation details.
+* Use stable contracts.
+* Validate input at appropriate boundaries.
+* Return consistent error responses.
+* Avoid exposing external-system DTOs.
+
+Do not change an existing API contract during architectural refactoring unless explicitly requested.
+
+---
+
+# 21. Testing Requirements
+
+Before and after refactoring, preserve functional behavior.
+
+Use the existing test framework and testing conventions.
+
+For significant changes, add or update:
+
+* Unit tests
+* Domain tests
+* Integration tests
+* API tests
+* Resiliency tests where appropriate
+
+Important domain logic must have unit-test coverage.
+
+Do not remove tests simply because implementation classes are being moved.
+
+---
+
+# 22. Build and Validation
+
+Before considering a change complete:
+
+1. Compile the affected modules.
+2. Run relevant unit tests.
+3. Run relevant integration/API tests where available.
+4. Run static analysis if configured.
+5. Check for dependency violations.
+6. Verify no accidental API changes.
+7. Review the resulting architecture.
+
+If a build or test fails, investigate the root cause rather than simply disabling the test or reducing validation.
+
+Never modify CI configuration merely to make a build pass unless explicitly requested.
+
+---
+
+# 23. Existing Code Takes Precedence Over Assumptions
+
+Do not assume that the architecture described in these instructions matches the current implementation.
+
+The existing repository is the source of truth for:
+
+* Current behavior
+* Existing dependencies
+* Existing frameworks
+* Existing APIs
+* Existing integrations
+* Existing resiliency mechanisms
+* Existing deployment structure
+
+When there is a conflict between the target architecture and existing implementation, document the gap and propose an incremental migration.
+
+---
+
+# 24. Architecture Decision Documentation
+
+For significant architectural decisions, provide a concise explanation containing:
+
+* Current state
+* Problem
+* Proposed change
+* Reason
+* Alternatives considered
+* Benefits
+* Risks
+* Migration approach
+
+Do not make large architectural decisions silently through code changes.
+
+---
+
+# 25. Important Rule
+
+You are assisting with an architectural transformation, not performing a blind rewrite.
+
+**Do not optimize for the smallest amount of code. Optimize for:**
+
+1. Correct business behavior
+2. Clear architectural boundaries
+3. Loose coupling
+4. High cohesion
+5. Resiliency
+6. Testability
+7. Maintainability
+8. Incremental migration
+9. Operational safety
+
+When uncertain, analyze first and explain the trade-offs before making a significant architectural change.
+
+### Where to put it
+
+Create:
+
+```text
+your-repository/
+├── .github/
+│   └── copilot-instructions.md
+├── src/
+├── build.gradle
+└── ...
+```
+
+GitHub's current documentation specifies `.github/copilot-instructions.md` as the repository-wide location, and the instructions are automatically included in Copilot interactions for that repository. ([GitHub Docs][2])
+
+### One thing I'd do differently for your project
+
+I **wouldn't stop with this file**.
+
+Once you've tried it against your actual repository, I would create additional path-specific instructions such as:
+
+```text
+.github/
+├── copilot-instructions.md
+└── instructions/
+    ├── domain.instructions.md
+    ├── integration.instructions.md
+    ├── api.instructions.md
+    └── testing.instructions.md
+```
+
+GitHub supports these path-specific `*.instructions.md` files with an `applyTo` pattern, so Copilot can receive more focused guidance when working in a particular part of the codebase. ([GitHub Docs][3])
+
+**More importantly, I can create the next piece for you: a set of ~10 carefully sequenced Copilot/Opus 4.5 prompts that you can run against your monolith — starting with "analyze the repository, don't change anything" and ending with extracting your first Capability + Domain Service + Integration Adapter.** That would give you a practical migration workflow rather than just the instruction file.
+
+[1]: https://docs.github.com/en/copilot/how-tos/configure-custom-instructions-in-your-ide/add-repository-instructions-in-your-ide?tool=visualstudio&utm_source=chatgpt.com "Adding repository custom instructions for GitHub Copilot in your IDE - GitHub Docs"
+[2]: https://docs.github.com/en/copilot/tutorials/customization-library/custom-instructions/your-first-custom-instructions?utm_source=chatgpt.com "Your first custom instructions - GitHub Docs"
+[3]: https://docs.github.com/en/copilot/reference/custom-instructions-support?utm_source=chatgpt.com "Support for different types of custom instructions - GitHub Docs"
