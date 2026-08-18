@@ -1,0 +1,51 @@
+Enterprise Resiliency Framework
+│
+├── Communication
+│      ├── REST
+│      ├── gRPC
+│      └── Kafka
+│
+├── Failure Handling
+│      ├── Timeouts
+│      ├── Retry
+│      ├── Circuit Breaker
+│      ├── Bulkhead
+│      ├── Rate Limiter
+│      └── Fallback
+│
+├── Observability
+│      ├── Logging
+│      ├── Metrics
+│      ├── Tracing
+│      ├── Alerts
+│      └── Dashboards
+│
+├── Health
+│      ├── Liveness
+│      ├── Readiness
+│      └── Startup Probe
+│
+├── Kubernetes
+│      ├── Requests
+│      ├── Limits
+│      ├── HPA
+│      ├── PDB
+│      └── Anti Affinity
+│
+├── Database
+│      ├── Connection Pool
+│      ├── Timeout
+│      ├── Retry
+│      └── Pool Size
+│
+├── Messaging
+│      ├── DLQ
+│      ├── Retry Topic
+│      ├── Idempotency
+│      └── Ordering
+│
+└── Cloud
+       ├── Multi AZ
+       ├── Secrets
+       ├── Autoscaling
+       └── Backup

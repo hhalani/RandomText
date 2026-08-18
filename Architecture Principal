@@ -1,0 +1,3 @@
+Architecture Principle
+
+"Business processes should be orchestrated independently from business capabilities. The Process Layer coordinates business journeys, while Domain Services own the execution of individual business capabilities."

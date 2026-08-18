@@ -1,0 +1,195 @@
+Yes — it can be done with GitHub Copilot + Claude Opus 4.5, especially if you have the repository in GitHub and Copilot agent/cloud agent is enabled. GitHub currently supports Claude Opus 4.5 as a Copilot coding-agent model, and the agent can research a repository, create an implementation plan, make changes on a branch, run/modify tests, and iterate based on your feedback.
+
+But I would not ask Copilot to "convert this monolith into microservices" in one shot. That's where you risk getting a technically valid but architecturally poor result.
+
+For the architecture you're describing:
+
+                 Experience API
+                       |
+          +------------+------------+
+          |            |            |
+     Capability 1  Capability 2  Capability 3
+          |            |            |
+       Domain       Domain       Domain
+       Service      Service      Service
+          |            |            |
+      Integration  Integration  Integration
+          |            |            |
+      PolicyCenter / Earnix / other systems
+
+I'd use Copilot as an implementation engineer, while you remain the architect.
+
+The approach I'd recommend
+
+Phase 1 — Have Copilot understand the existing monolith
+
+Ask it to analyze, but make no code changes:
+
+Analyze this repository as a senior application architect. Identify the current Experience API structure, business capabilities, domain responsibilities, external system integrations, shared components, dependencies, and cross-cutting concerns. Do not modify any files. Produce an architecture assessment and identify potential boundaries for Experience, Capability, Domain Service, and Integration layers.
+
+Copilot's cloud agent specifically supports repository research and planning before implementation.
+
+
+
+Phase 2 — You define the target architecture
+
+This is the part I would not delegate completely to AI.
+
+For example, you decide:
+
+Experience API
+      |
+      +---- Quote Capability API
+      |          |
+      |          +---- Quote Domain Service
+      |                     |
+      |                     +---- PolicyCenter Adapter
+      |
+      +---- Driver Capability API
+                 |
+                 +---- Driver Domain Service
+                            |
+                            +---- PolicyCenter Adapter
+
+You also decide things such as:
+
+What constitutes a Capability
+What belongs in Domain Services
+Where business rules live
+What belongs in Integration
+Command vs Query separation
+Which APIs should be synchronous
+Where caching belongs
+Circuit breaker / timeout / retry boundaries
+Whether a capability gets its own deployable service
+Data ownership
+API contracts
+
+Those are architecture decisions, not merely coding decisions.
+
+Phase 3 — Give Copilot your architecture rules
+
+This is where Copilot becomes extremely useful.
+
+You can create something like:
+
+.github/
+   copilot-instructions.md
+
+and document your architectural rules.
+
+GitHub supports repository-level Copilot instructions specifically for giving Copilot persistent knowledge about project structure, conventions, build/test procedures, etc.
+
+For your project, I'd put rules such as:
+
+Architecture Principles
+
+
+1. Experience APIs must not directly call Guidewire or other external systems.
+
+
+2. Capability APIs own business capabilities and must not contain
+   external-system-specific integration logic.
+
+
+3. Domain Services contain business logic and orchestration.
+
+
+4. Integration Services are responsible for communication with
+   external systems such as Guidewire PolicyCenter and Earnix.
+
+
+5. No domain service may directly depend on a Guidewire SDK/client.
+
+
+6. External system calls must implement timeout, retry and circuit breaker
+   according to the resiliency standards.
+
+
+7. Controllers must not contain business logic.
+
+
+8. DTOs used by external systems must not leak into the domain model.
+
+
+9. Existing behavior must be preserved unless explicitly identified
+   as a business-rule change.
+
+
+10. Every refactoring step must have automated tests.
+
+That dramatically changes the quality of what Copilot produces.
+
+Phase 4 — Refactor one capability at a time
+
+For example, don't say:
+
+Refactor the entire Experience API.
+
+Instead:
+
+Extract Vehicle Management capability from the existing Experience API.
+
+Then give Copilot very specific instructions:
+
+Identify all code related to Vehicle Management.
+
+
+Create an implementation plan that shows:
+1. Existing classes involved
+2. Existing dependencies
+3. Business logic currently embedded in Experience API
+4. Guidewire dependencies
+5. Proposed Capability API
+6. Proposed Domain Service
+7. Proposed Integration Adapter
+8. Classes that should be moved
+9. Classes that should remain
+10. Tests that need to be created or modified
+
+
+Do not modify the code yet.
+
+Review the plan.
+
+Then:
+
+Implement the approved plan. Preserve existing API behavior and
+functionality. Do not introduce new business behavior. Create tests
+for the extracted components.
+
+This incremental approach is much safer.
+
+One important limitation
+
+If your target architecture requires creating multiple repositories, Copilot cloud agent has a significant limitation: a cloud-agent task operates on the repository specified when you start it and cannot make changes across multiple repositories in one run.
+
+So if your current monolith is one repository and you're ultimately going to create:
+
+experience-api
+vehicle-capability-api
+vehicle-domain-service
+policycenter-integration
+earnix-integration
+
+you'll probably want to do the refactoring in stages.
+
+You could initially create the architectural separation within the existing repository, then split services/repositories afterward.
+
+My recommendation for your situation
+
+Given that you're acting as the Solution Architect, I would use:
+
+You → Architecture & boundaries
+
+Claude Opus 4.5/Copilot → Repository analysis + implementation
+
+Copilot → Tests + refactoring + dependency analysis
+
+You → Review every architectural decision
+
+The combination is absolutely capable of helping you do this. In fact, Copilot's agent workflow is specifically designed around research → plan → implement → review → iterate, rather than simply generating snippets.
+
+And you don't necessarily need Claude's separate subscription for this—the Claude coding agent can be powered by an existing Copilot subscription when available to your plan.
+
+If you want, I can help you build the exact .github/copilot-instructions.md and a sequence of 10–15 Copilot prompts for your specific Experience → Capability → Domain → Integration transformation. That would be much more useful than giving Copilot one giant refactoring prompt.

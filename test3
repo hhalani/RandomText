@@ -1,0 +1,272 @@
+                         CHANNEL / EXPERIENCE
++------------------------------------------------+
+| Single SPA Shell                               |
+|                                                |
+|  MFE: Quote   MFE: Driver   MFE: Vehicle       |
+|                                                |
++------------------------------------------------+
+                         |
+                         v
+
++------------------------------------------------+
+| Experience API Layer (BFF)                    |
+|                                                |
+| Quote Experience API                           |
+| Claim Experience API                           |
+| Policy Experience API                          |
++------------------------------------------------+
+                         |
+                         v
+
++------------------------------------------------+
+| Capability API Layer                           |
+|                                                |
+| Driver Capability API                          |
+| Vehicle Capability API                         |
+| Prior Insurance Capability API                 |
+| Location Capability API                        |
++------------------------------------------------+
+                         |
+                         v
+
++------------------------------------------------+
+| Domain Services Layer                          |
+|                                                |
+| Driver Eligibility Service                     |
+| Underwriting Rules Service                     |
+| Address Validation Service                     |
++------------------------------------------------+
+                         |
+                         v
+
++------------------------------------------------+
+| Integration API Layer                          |
+|                                                |
+| Guidewire Adapter                              |
+| DMV Adapter                                    |
+| External Vendor Adapter                        |
++------------------------------------------------+
+                         |
+                         v
+
++------------------------------------------------+
+| Systems of Record                              |
+|                                                |
+| Guidewire PolicyCenter                         |
+| ClaimCenter                                    |
+| Legacy Mainframe                               |
+| External Systems                               |
++------------------------------------------------+
+
+
+
+Experience owns channel adaptation
+Capability owns business capability
+Domain owns business rules
+Integration owns connectivity
+Core owns data
+
+
+| Concern                        | Recommended Layer                      | Why                                            |
+| ------------------------------ | -------------------------------------- | ---------------------------------------------- |
+| Rate Limiting                  | API Gateway / Experience API           | Protect APIs from excessive client requests    |
+| Authentication / Authorization | API Gateway + Experience API           | Validate caller identity before business logic |
+| Circuit Breaker                | Capability API & Integration API       | Protect downstream services                    |
+| Timeout                        | Capability API & Integration API       | Prevent long-running dependencies              |
+| Retry                          | Integration API (sometimes Capability) | Retry transient failures only                  |
+| Bulkhead                       | Capability API & Integration API       | Isolate failures between dependencies          |
+| Caching                        | Capability API                         | Cache reusable business/reference data         |
+| Idempotency                    | Capability API                         | Prevent duplicate business operations          |
+| Observability                  | All layers                             | End-to-end tracing and monitoring              |
+
+
+
+
+Enterprise Resiliency Framework
+│
+├── Communication
+│      ├── REST
+│      ├── gRPC
+│      └── Kafka
+│
+├── Failure Handling
+│      ├── Timeouts
+│      ├── Retry
+│      ├── Circuit Breaker
+│      ├── Bulkhead
+│      ├── Rate Limiter
+│      └── Fallback
+│
+├── Observability
+│      ├── Logging
+│      ├── Metrics
+│      ├── Tracing
+│      ├── Alerts
+│      └── Dashboards
+│
+├── Health
+│      ├── Liveness
+│      ├── Readiness
+│      └── Startup Probe
+│
+├── Kubernetes
+│      ├── Requests
+│      ├── Limits
+│      ├── HPA
+│      ├── PDB
+│      └── Anti Affinity
+│
+├── Database
+│      ├── Connection Pool
+│      ├── Timeout
+│      ├── Retry
+│      └── Pool Size
+│
+├── Messaging
+│      ├── DLQ
+│      ├── Retry Topic
+│      ├── Idempotency
+│      └── Ordering
+│
+└── Cloud
+       ├── Multi AZ
+       ├── Secrets
+       ├── Autoscaling
+       └── Backup
+
+
+
+
+
+Phase 2 – Create Reference Patterns
+
+For every capability create
+
+Why
+When
+When NOT to use
+Sample code
+Architecture Diagram
+Spring Boot Example
+Kubernetes Example       
+
+
+
+Phase 3 – Create Architecture Decision Records (ADR)
+
+Each resiliency decision gets an ADR.
+
+Example
+
+ADR-001
+
+Every outbound REST call
+must have
+
+Timeout
+
+Retry
+
+Circuit Breaker
+
+Metrics
+
+ADR-002
+
+Kafka consumers
+must support
+
+DLQ
+
+Retry
+
+Idempotency
+
+
+
+
+
+=======
+
+Confluence
+
+Home
+
+↓
+
+Resiliency Architecture
+
+↓
+
+Timeout Pattern
+
+↓
+
+Circuit Breaker Pattern
+
+↓
+
+Retry Pattern
+
+↓
+
+Bulkhead Pattern
+
+↓
+
+Kafka Standards
+
+↓
+
+Kubernetes Standards
+
+↓
+
+Cloud Standards
+
+
+
+
+ChatGPT or Claude for creating a comprehensive enterprise architecture strategy with governance, trade-offs, and executive communication.
+
+
+
+Step 1
+ChatGPT
+    ↓
+Enterprise Resiliency Strategy
+
+Step 2
+ChatGPT
+    ↓
+Reference Architecture
+
+Step 3
+ChatGPT
+    ↓
+PowerPoint Storyboard
+
+Step 4
+Claude
+    ↓
+Confluence Documentation
+
+Step 5
+Devin
+    ↓
+Implement Scanner
+
+Step 6
+OpenRewrite
+    ↓
+Automatic Fixes
+
+Step 7
+GitHub Copilot
+    ↓
+Developer Productivity
+
+Step 8
+CodeRabbit
+    ↓
+AI Code Reviews

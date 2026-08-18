@@ -1,0 +1,420 @@
+Absolutely. Since your goal is to create something that could be presented to a CTO, Chief Architect, or Engineering Leadership, the prompt needs to make ChatGPT act like an **Enterprise Chief Architect**, not just generate documentation.
+
+Below are the exact prompts I would use.
+
+---
+
+# Prompt 1 – Create the Enterprise Resiliency Strategy
+
+This is the most important prompt because everything else builds on it.
+
+```text
+You are an Enterprise Chief Architect with over 20 years of experience designing cloud-native platforms for Fortune 100 companies such as Amazon, Netflix, Capital One, Google, and Microsoft.
+
+I am a Solution Architect responsible for creating an Enterprise Resiliency Strategy that will become the official engineering standard for my organization.
+
+This should not be a generic resiliency document.
+
+I want you to create an enterprise-grade strategy that engineering leadership can approve and that development teams can implement.
+
+The organization consists of approximately 300+ Java Spring Boot microservices deployed on Kubernetes in AWS.
+
+Technologies include:
+
+- Java 21
+- Spring Boot 3/4
+- Kubernetes
+- AWS
+- Kafka
+- PostgreSQL
+- MongoDB
+- REST
+- OpenAPI
+- OpenTelemetry
+- Prometheus
+- Grafana
+- Jenkins
+- GitHub
+- OpenRewrite
+- Resilience4j
+
+The document should include:
+
+1. Executive Summary
+
+2. Vision
+
+3. Business Goals
+
+4. Technical Goals
+
+5. Current Challenges
+
+6. Target State
+
+7. Enterprise Architecture Principles
+
+8. Enterprise Resiliency Principles
+
+9. Resiliency Domains
+
+10. Reference Architecture
+
+11. Standard Design Patterns
+
+12. Anti-patterns
+
+13. Cloud Resiliency
+
+14. Kubernetes Resiliency
+
+15. Messaging Resiliency
+
+16. Database Resiliency
+
+17. API Resiliency
+
+18. Disaster Recovery
+
+19. High Availability
+
+20. Multi-region Strategy
+
+21. Observability
+
+22. Security Considerations
+
+23. Governance
+
+24. Architecture Review Process
+
+25. CI/CD Enforcement
+
+26. Architecture Scorecard
+
+27. Service Maturity Model
+
+28. Implementation Roadmap
+
+29. Success Metrics
+
+30. Future Enhancements
+
+For every recommendation explain:
+
+• Why it is important
+• Benefits
+• Risks
+• Best Practices
+• Examples
+• Common Mistakes
+
+Whenever appropriate include architecture diagrams using Mermaid.
+
+Whenever possible use examples from Netflix, Amazon, Google, Uber and Microsoft engineering practices.
+
+Write this as if it will become the organization's official Enterprise Resiliency Architecture Standard.
+
+Do not summarize.
+Be comprehensive.
+Expect the final document to exceed 100 pages when exported to Word.
+```
+
+---
+
+# Prompt 2 – Create the Reference Architecture
+
+Once Prompt 1 is complete, start a **new chat**.
+
+```text
+You are the Chief Architect for a Fortune 100 company.
+
+Using the Enterprise Resiliency Strategy that we previously designed, create a complete Enterprise Reference Architecture.
+
+This document should serve as the implementation guide for development teams.
+
+For every resiliency capability include:
+
+• Purpose
+• When to use
+• When not to use
+• Java examples
+• Spring Boot examples
+• Kubernetes examples
+• AWS examples
+• Kafka examples
+• Architecture diagrams
+• Sequence diagrams
+• Deployment diagrams
+• Component diagrams
+• Failure scenarios
+• Recovery scenarios
+• Configuration examples
+• Monitoring
+• Metrics
+• Logging
+• Alerts
+• Testing Strategy
+
+Create separate chapters for:
+
+Timeouts
+
+Retry
+
+Circuit Breaker
+
+Bulkhead
+
+Rate Limiter
+
+Fallback
+
+Health Checks
+
+Readiness
+
+Liveness
+
+Autoscaling
+
+Connection Pools
+
+Database Resiliency
+
+Kafka Resiliency
+
+Idempotency
+
+Saga Pattern
+
+Outbox Pattern
+
+Dead Letter Queue
+
+Compensation Pattern
+
+Distributed Transactions
+
+Observability
+
+OpenTelemetry
+
+Tracing
+
+Metrics
+
+Logging
+
+Chaos Engineering
+
+Disaster Recovery
+
+Multi Region
+
+Blue Green Deployment
+
+Canary Deployment
+
+Rolling Updates
+
+Service Mesh
+
+Istio
+
+Resilience4j
+
+OpenRewrite
+
+Every chapter should contain diagrams, examples, implementation guidance, and governance recommendations.
+
+Generate Mermaid diagrams whenever appropriate.
+
+Write this as a technical architecture handbook for engineers.
+```
+
+---
+
+# Prompt 3 – Create the Executive PowerPoint
+
+This is one of my favorite prompts.
+
+```text
+Act as a Senior Enterprise Architect preparing a presentation for the CTO, CIO, VP Engineering, and Architecture Review Board.
+
+Create a world-class executive PowerPoint presentation explaining the Enterprise Resiliency Program.
+
+The audience consists of senior executives.
+
+The presentation should be approximately 50 slides.
+
+For every slide provide:
+
+1. Slide title
+
+2. Executive message
+
+3. Diagram description
+
+4. Speaker notes
+
+5. Key talking points
+
+6. Suggested icons
+
+7. Suggested graphics
+
+8. Suggested animations
+
+Include slides covering:
+
+Current State
+
+Business Risks
+
+Architecture Problems
+
+Technical Debt
+
+Availability Metrics
+
+Incident Statistics
+
+Target Architecture
+
+Resiliency Framework
+
+Architecture Principles
+
+Reference Architecture
+
+Governance
+
+Repository Scanner
+
+Architecture Score
+
+OpenRewrite Automation
+
+CI/CD Integration
+
+Developer Workflow
+
+Dashboard
+
+Implementation Roadmap
+
+Cost vs Benefit
+
+ROI
+
+Future Roadmap
+
+Executive Summary
+
+Whenever appropriate create Mermaid diagrams.
+
+Design the presentation using a McKinsey / Deloitte / AWS Executive style rather than an academic style.
+
+The slides should tell a compelling story instead of being independent topics.
+
+Every slide should answer one executive question.
+
+Make this presentation suitable for presenting to executive leadership.
+```
+
+---
+
+# Bonus Prompt (The one I would actually use)
+
+This is the prompt I think would set your work apart from most architecture initiatives.
+
+```text
+I don't want to create just documentation.
+
+I want to create an Enterprise Resiliency Governance Platform.
+
+Help me design a platform similar to SonarQube, but focused on resiliency.
+
+The platform should:
+
+• Scan hundreds of repositories
+
+• Detect resiliency violations
+
+• Assign maturity scores
+
+• Generate architecture recommendations
+
+• Produce executive dashboards
+
+• Generate Confluence documentation
+
+• Create Architecture Decision Records
+
+• Generate OpenRewrite recipes
+
+• Automatically create Pull Requests
+
+• Integrate with GitHub Actions
+
+• Integrate with Jenkins
+
+• Integrate with Azure DevOps
+
+• Generate weekly executive reports
+
+• Produce team scorecards
+
+• Measure engineering KPIs
+
+Design the entire platform including:
+
+Architecture
+
+Microservices
+
+Database
+
+Rule Engine
+
+Plugin Framework
+
+Scanner Framework
+
+Reporting Engine
+
+Dashboard
+
+OpenRewrite Integration
+
+AI Integration
+
+LLM Prompt Design
+
+Technology Stack
+
+Security
+
+Deployment
+
+Scalability
+
+Future Vision
+
+Produce architecture diagrams, sequence diagrams, component diagrams, deployment diagrams, and implementation roadmap.
+
+Think like the Chief Architect of Netflix building an enterprise governance platform.
+```
+
+## One recommendation that will make a huge difference
+
+I would **not** ask ChatGPT to generate the entire document in one response. Instead, use Prompt 1 once to establish the scope, then work chapter by chapter. For example:
+
+* "Generate Chapter 1: Executive Summary"
+* "Generate Chapter 2: Vision"
+* "Generate Chapter 3: Business Goals"
+
+Repeat for each chapter until the full strategy is complete. This produces much higher quality and consistency than trying to generate a 100+ page document in one go.
+
+The same approach works for the reference architecture and the slide deck: build them incrementally, review each section, and refine it before moving to the next. This results in a document that is much closer to what an enterprise architecture team would produce.

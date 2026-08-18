@@ -242,3 +242,7 @@ One-sentence summary for your architecture slide
 "The layered architecture separates user experience, business capabilities, domain logic, system integration, and core systems, enabling independent evolution, reuse, and modernization while reducing dependency on legacy platforms."
 
 For an insurance modernization program (Guidewire + AWS + Microservices), this is the type of explanation I would put directly into an architecture strategy document or Confluence page.
+
+
+
+jessica.garcia1@schwab.com

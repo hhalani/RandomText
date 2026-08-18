@@ -1,0 +1,10 @@
+This is the easiest way to remember it:
+
+Architecture	Question it answers
+Microservices	Where are the boundaries between independently deployable services?
+Hexagonal	How do I protect the business logic inside a service from external dependencies?
+Layered Architecture	How do responsibilities flow between layers?
+Event-driven architecture	How do services communicate asynchronously?
+CQRS	How do we separate read and write models when appropriate?
+
+You can combine all of them.
