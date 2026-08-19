@@ -1,0 +1,27 @@
+For AI
+
+Architecture Principles
+
+1. Experience APIs must not directly call Guidewire or other external systems.
+
+2. Capability APIs own business capabilities and must not contain
+   external-system-specific integration logic.
+
+3. Domain Services contain business logic and orchestration.
+
+4. Integration Services are responsible for communication with
+   external systems such as Guidewire PolicyCenter and Earnix.
+
+5. No domain service may directly depend on a Guidewire SDK/client.
+
+6. External system calls must implement timeout, retry and circuit breaker
+   according to the resiliency standards.
+
+7. Controllers must not contain business logic.
+
+8. DTOs used by external systems must not leak into the domain model.
+
+9. Existing behavior must be preserved unless explicitly identified
+   as a business-rule change.
+
+10. Every refactoring step must have automated tests.
