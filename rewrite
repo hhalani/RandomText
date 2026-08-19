@@ -3,3 +3,7 @@ This is my analysis of the overall architecture. As I was going through the diag
 I understand that some of my findings may overlap with what Jithu is working on. Jithu has not yet had a chance to walk Rais and me through what he is covering as part of the overall architecture overhaul. Hopefully, he will be able to go through it during our 1:00 PM meeting today.
 
 In parallel, I am going through the code to understand the current Auto Quote process and documenting everything I have found so far.
+
+
+
+Okay, thanks for the guidance. I’ll focus on the Issue and Bind parts. Going through the diagrams and code alone is not conclusive enough to identify the actual pain points we have with Issue and Bind. Is Thomas the right person to speak with to understand the current pain points, or is there someone else who can provide me with more details?
