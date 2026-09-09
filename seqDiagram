@@ -1,0 +1,46 @@
+sequenceDiagram
+    autonumber
+
+    participant E as Extractor
+    participant S3 as Policy Data S3
+    participant CDA as CDA
+    participant PE as Premium Data Events
+    participant AP as AP Data Mart
+    participant BP as Monthly Batch Process
+
+    E->>E: Extract data from System A
+    E->>E: Determine processing date
+
+    alt Before Aug 21, 2026
+        E->>S3: Read Policy Data
+        S3-->>E: Policy Data
+
+        E->>CDA: Read CDA Data
+        CDA-->>E: CDA Data
+
+        E->>E: Convert to Earnix Format
+        E->>CDA: Supplement Missing Data
+        CDA-->>E: Missing Data
+
+        E->>E: Convert to Target System Format
+        Note right of E: True → Y<br/>False → F<br/>etc.
+
+        E->>AP: Write data
+        AP-->>E: Acknowledge
+
+    else Aug 21, 2026 and later
+        E->>PE: Read Premium Data Events
+        PE-->>E: Premium Events
+
+        E->>AP: Write data
+        AP-->>E: Acknowledge
+    end
+
+    rect rgb(240, 240, 240)
+        Note over BP,AP: Runs Monthly
+        BP->>AP: Read AP Data Mart
+        AP-->>BP: AP Data
+
+        BP->>BP: Generate AP File
+        BP-->>AP: Processing complete
+    end
