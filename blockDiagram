@@ -1,0 +1,30 @@
+flowchart TD
+
+    %% =========================
+    %% Main Extraction Process
+    %% =========================
+    A([Start]) --> B[Extractor]
+    B --> C[Extract Data from System A]
+    C --> D{Is Date <br/> August 21, 2026?}
+
+    %% Legacy Flow
+    D -- Yes --> E[Read Data from<br/>Policy Data S3 Bucket]
+    E --> F[Get Data from CDA]
+    F --> G[Convert Data into<br/>Earnix Format]
+    G --> H[Supplement Missing Data<br/>from CDA Source]
+    H --> I[Convert Data into<br/>Target System Format<br/><br/>True → Y<br/>False → F<br/>etc.]
+    I --> J[Write Data to<br/>AP Data Mart]
+
+    %% New Event Driven Flow
+    D -- No --> K[Read Events from<br/>Premium Data Events]
+    K --> J
+
+    %% =========================
+    %% Monthly Batch Process
+    %% =========================
+    J --> L[(AP Data Mart)]
+
+    M([Batch Process]) --> N[Read Data from<br/>AP Data Mart]
+    N --> O[Monthly Processing]
+    O --> P[Create AP File]
+    P --> Q([End])
