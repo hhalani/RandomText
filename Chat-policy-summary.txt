@@ -1,0 +1,1383 @@
+Policy Summary API — Current-State Assessment and Read-Replica-Based Policy Summary Architecture
+1. Executive Summary
+
+The existing Policy Summary API was originally designed to provide consumers with a simplified view of policy information without requiring every consumer to understand or integrate directly with the underlying policy systems.
+
+The API maintains a Policy Summary Database, which is populated through REST calls originating from the policy source system. However, the current implementation has several significant architectural limitations:
+
+The Policy Summary Database is populated only for Automobile policies.
+It does not currently provide Property policy information.
+It does not contain policy information originating from mainframe systems.
+In many consumer scenarios, the Policy Summary API ultimately retrieves information from the source system at runtime.
+Guidewire's REST call to the Policy Summary API introduces tight coupling between the Policy System and the Policy Summary capability.
+The architecture creates a dependency on the availability, performance, scalability, and release cycles of the source systems.
+The Policy Summary Database is therefore not functioning as a true enterprise policy read model; it is effectively a partial cache supplemented by runtime source-system calls.
+As the number of consumers and policy domains increases, this architecture becomes increasingly difficult to scale and evolve.
+
+The original objective of avoiding direct calls to the source system is therefore not consistently achieved.
+
+Recommended Direction
+
+A new Policy Summary / Policy Read Model platform should be established using read replicas and/or CDC-based data replication from all authoritative policy systems.
+
+The new architecture should:
+
+Obtain policy data from source-system read replicas rather than making synchronous consumer-driven calls to transactional systems.
+Support Guidewire Automobile, Guidewire Property, and mainframe policy data.
+Build and maintain a canonical Policy Summary representation.
+Keep consumers independent from the underlying policy systems.
+Decouple the lifecycle and availability of consumers from transactional policy systems.
+Provide a scalable read-optimized data store for high-volume policy inquiries.
+Allow the underlying policy systems to change without requiring every consumer to change.
+Provide a foundation for future policy domains and additional source systems.
+
+The proposed architecture changes the fundamental integration pattern from:
+
+Consumer → Policy Summary API → Source System
+
+to:
+
+Source Systems → Read Replicas / CDC → Policy Read Model → Policy Summary API → Consumers
+
+This is a significant improvement in separation of concerns, scalability, resiliency, and architectural flexibility.
+
+2. Background
+
+The Policy Summary API was introduced to provide consumers with a simplified policy representation.
+
+The general concept was sound:
+
+Consumers should not need to understand the internal data model of Guidewire or legacy policy systems.
+Consumers should not need to establish individual integrations with each policy system.
+A common API should provide a consistent policy summary.
+A Policy Summary Database could potentially satisfy frequently requested policy information without repeatedly accessing transactional systems.
+
+However, the implementation evolved in a way that does not fully achieve these objectives.
+
+The Policy Summary Database is currently populated through REST interactions from a policy system.
+
+For example:
+
+Guidewire Policy System
+        |
+        | REST
+        v
+Policy Summary API
+        |
+        v
+Policy Summary Database
+
+At first glance, this appears to create a decoupled architecture.
+
+However, there are two different forms of coupling involved:
+
+Data synchronization coupling
+Runtime request coupling
+
+The second is particularly problematic.
+
+3. Current-State Architecture
+
+A simplified representation of the current architecture is:
+
+                         +----------------------+
+                         |      Consumer        |
+                         +----------+-----------+
+                                    |
+                                    v
+                         +----------------------+
+                         |  Policy Summary API  |
+                         +----------+-----------+
+                                    |
+                         +----------+----------+
+                         |                     |
+                         v                     v
+                +----------------+    +------------------+
+                | Policy Summary |    | Source Policy   |
+                |    Database    |    |     System      |
+                +----------------+    +------------------+
+                                           ^
+                                           |
+                                  Runtime REST Call
+
+The intended architecture was presumably:
+
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   v
+Policy Summary Database
+
+The actual behavior in many scenarios is closer to:
+
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   +----> Policy Summary DB
+   |
+   +----> Source System
+
+This distinction is architecturally important.
+
+If the API frequently needs to go back to the source system to obtain information, then the Policy Summary API has not fully become an independent read model.
+
+It remains dependent on the transactional source system.
+
+4. Fundamental Architectural Issue
+4.1 The Policy Summary Database Is Not a Complete Policy Read Model
+
+A read model should ideally contain the information necessary to satisfy the read use cases for which it exists.
+
+The current Policy Summary Database has limited coverage:
+
+Policy/Data Domain	Current Coverage
+Automobile policies	Yes
+Property policies	No
+Mainframe policies	No
+Other policy systems	Limited/No
+Enterprise-wide policy view	No
+
+Consequently, consumers cannot consistently treat the Policy Summary API as an authoritative read interface across policy domains.
+
+Instead, the API must determine whether it has the required information and, when it does not, retrieve the information from the source system.
+
+This creates architectural complexity and inconsistent behavior.
+
+5. Runtime Dependency on Source Systems
+
+One of the most significant problems is the runtime dependency on the source system.
+
+Consider the following flow:
+
+Consumer
+   |
+   | GET Policy Summary
+   v
+Policy Summary API
+   |
+   | Data not available
+   v
+Guidewire Policy System
+   |
+   v
+Policy Summary API
+   |
+   v
+Consumer
+
+The consumer believes it is interacting with the Policy Summary API.
+
+However, from a system-dependency perspective, the consumer request is indirectly dependent on Guidewire.
+
+Therefore:
+
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   v
+Guidewire
+
+is still part of the runtime dependency chain.
+
+This creates several problems.
+
+Availability Coupling
+
+If Guidewire is unavailable, degraded, undergoing maintenance, or experiencing high load, the Policy Summary API may also be unable to satisfy requests.
+
+Therefore:
+
+Policy Summary availability becomes dependent on source-system availability.
+
+This defeats one of the primary reasons for introducing a read model.
+
+6. Performance Coupling
+
+Source systems are generally optimized for transactional policy operations.
+
+They are not necessarily designed to handle large volumes of enterprise-wide read traffic from downstream consumers.
+
+For example:
+
+100 Policy Summary requests
+        |
+        v
+Policy Summary API
+        |
+        v
+100 requests to Guidewire
+
+As the number of consumers increases:
+
+Consumer A ----\
+Consumer B -----\
+Consumer C ------> Policy Summary API ---> Guidewire
+Consumer D -----/
+Consumer E ----/
+
+the Policy Summary API can unintentionally become a traffic multiplier against the transactional system.
+
+This can create:
+
+Increased Guidewire CPU utilization
+Increased database utilization
+Increased network traffic
+Increased response times
+Increased connection utilization
+Increased API thread utilization
+Increased risk of throttling
+Increased probability of cascading failures
+
+The problem becomes more significant as additional consumers are onboarded.
+
+7. Tight Coupling Between Guidewire and Policy Summary API
+
+Another important architectural concern is the REST integration from Guidewire to the Policy Summary API.
+
+Conceptually:
+
+Guidewire
+    |
+    | REST
+    v
+Policy Summary API
+
+This creates a dependency between two independently evolving systems.
+
+Guidewire is now aware of the Policy Summary API as an integration dependency.
+
+This is a form of temporal and operational coupling.
+
+7.1 Temporal Coupling
+
+For a synchronous REST interaction to succeed:
+
+Guidewire must be available.
+Policy Summary API must be available.
+Network connectivity must be available.
+Authentication must work.
+The API contract must be compatible.
+The Policy Summary API must respond within an acceptable time.
+
+Therefore:
+
+Guidewire operation
+       |
+       +---- Policy Summary API available?
+       |
+       +---- Network available?
+       |
+       +---- Authentication available?
+       |
+       +---- API responding?
+       |
+       +---- Contract compatible?
+
+The source system's operation is therefore indirectly dependent on another application.
+
+This is undesirable when the Policy Summary capability is not part of the core transactional operation.
+
+8. Failure Propagation
+
+Synchronous integration also creates the possibility of failure propagation.
+
+For example:
+
+Guidewire
+   |
+   | REST
+   v
+Policy Summary API
+   |
+   X
+Service unavailable
+
+Depending on how the integration is implemented, the failure can result in:
+
+Timeouts
+Retries
+Thread exhaustion
+Connection pool exhaustion
+Increased latency
+Transaction failures
+Duplicate requests
+Operational alerts
+
+A failure in a downstream read capability can therefore affect the upstream transactional system.
+
+This violates an important resiliency principle:
+
+Failure of a non-critical downstream capability should not unnecessarily impact the core transactional system.
+
+9. Retry Amplification
+
+Synchronous REST dependencies also introduce retry behavior.
+
+For example:
+
+Guidewire
+   |
+   | Request
+   v
+Policy Summary API
+   |
+   X Timeout
+   |
+   +---- Retry
+           |
+           v
+      Policy Summary API
+           |
+           X
+
+If multiple components retry simultaneously, the problem can become worse.
+
+For example:
+
+Guidewire
+    |
+    +--> Request 1
+    +--> Retry 1
+    +--> Retry 2
+    +--> Retry 3
+
+Instead of reducing the impact of an outage, retries can increase load on an already degraded service.
+
+This can contribute to a cascading failure.
+
+10. Consumer-Driven Coupling
+
+The current design also creates an indirect coupling between consumers and source-system behavior.
+
+A consumer calls:
+
+GET /policy/{policyNumber}
+
+but the response may depend on:
+
+Whether the policy is present in the Policy Summary Database
+Whether the policy is Automobile or Property
+Whether the source system is available
+Whether the source system responds within the timeout
+Whether the source system supports the required operation
+Whether the source system's API contract has changed
+
+Consequently, consumers receive a common API contract but do not necessarily receive a common runtime behavior.
+
+This makes the Policy Summary API less predictable.
+
+11. Inconsistent Latency
+
+A database read and a source-system REST call have fundamentally different latency characteristics.
+
+For example:
+
+Policy Summary DB
+       |
+       v
+    Fast Read
+
+versus:
+
+Policy Summary API
+       |
+       v
+Network
+       |
+       v
+Source API
+       |
+       v
+Source application
+       |
+       v
+Source database
+       |
+       v
+Response
+
+The second path contains significantly more failure and latency points.
+
+As a result, two otherwise identical Policy Summary API requests could have very different response times.
+
+Example:
+
+Request A
+Consumer
+   |
+   v
+Policy Summary DB
+   |
+   v
+50 ms
+
+versus:
+
+Request B
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   v
+Guidewire
+   |
+   v
+300-1000+ ms
+
+This makes it difficult to establish predictable API performance.
+
+12. Scalability Concerns
+
+The current architecture scales the read workload back to the transactional systems.
+
+This is the wrong direction for a high-volume read use case.
+
+The preferred architecture should allow:
+
+                    +-------------------+
+                    | Policy Read Model |
+                    +---------+---------+
+                              |
+                 +------------+-------------+
+                 |            |             |
+                 v            v             v
+             Consumer A    Consumer B    Consumer C
+
+The read workload can then scale independently.
+
+The source systems do not need to process every downstream policy inquiry.
+
+13. Lack of Enterprise Policy Coverage
+
+The current implementation is also constrained by the source system from which it receives data.
+
+If the Policy Summary Database is populated primarily through Guidewire Automobile REST calls, it naturally becomes an Automobile-oriented data store.
+
+This makes expansion difficult.
+
+For example:
+
+Guidewire Auto
+      |
+      v
+Policy Summary DB
+
+does not naturally solve:
+
+Guidewire Property
+      |
+      v
+Policy Summary DB
+
+or:
+
+Mainframe
+      |
+      v
+Policy Summary DB
+
+Each additional system would require another integration pattern.
+
+The architecture risks becoming:
+
+             +--> Guidewire Auto
+             |
+Consumer --> API --> Guidewire Property
+             |
+             +--> Mainframe
+             |
+             +--> Other System
+
+This recreates the integration hub problem.
+
+14. Proposed Architecture
+
+The recommended architecture is to establish a Policy Read Model Platform.
+
+The fundamental design is:
+
+             SOURCE SYSTEMS
+             
+     +-------------------------+
+     | Guidewire Automobile    |
+     +------------+------------+
+                  |
+                  v
+           Read Replica / CDC
+                  |
+                  |
+     +------------+------------+
+     |                         |
+     v                         v
+Guidewire Property        Mainframe
+     |                         |
+     v                         v
+Read Replica / CDC        Read Replica / CDC
+     |                         |
+     +------------+------------+
+                  |
+                  v
+        Canonical Policy Data
+                  |
+                  v
+       +---------------------+
+       | Policy Read Model   |
+       | / Summary Database  |
+       +----------+----------+
+                  |
+                  v
+       +---------------------+
+       | Policy Summary API  |
+       +----------+----------+
+                  |
+       +----------+----------+
+       |          |          |
+       v          v          v
+   Consumer A Consumer B Consumer C
+
+The key difference is that consumers are removed from the source-system runtime dependency.
+
+15. Read Replica as the Integration Boundary
+
+A read replica provides a critical architectural separation.
+
+Instead of:
+
+Policy Summary API
+        |
+        | Runtime REST
+        v
+Guidewire
+
+the architecture becomes:
+
+Guidewire
+    |
+    | Replication / CDC
+    v
+Guidewire Read Replica
+    |
+    v
+Policy Read Model
+    |
+    v
+Policy Summary API
+
+Guidewire remains the system of record.
+
+The read replica is not intended to replace Guidewire.
+
+Instead, it provides a read-optimized representation of the data required by downstream applications.
+
+This distinction is important.
+
+System of Record
+
+Guidewire remains responsible for:
+
+Policy transactions
+Policy lifecycle
+Policy changes
+Business transactions
+Authoritative policy state
+Policy Read Model
+
+The Policy Read Model is responsible for:
+
+Read-optimized access
+Policy search
+Policy summary
+Cross-system policy views
+Consumer-facing query patterns
+16. Mainframe Integration
+
+The same principle should apply to mainframe policy systems.
+
+Rather than allowing consumers to call mainframe systems synchronously:
+
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   v
+Mainframe
+
+the architecture becomes:
+
+Mainframe
+   |
+   | CDC / replication
+   v
+Read Replica
+   |
+   v
+Policy Read Model
+   |
+   v
+Policy Summary API
+
+This provides a consistent abstraction across modern and legacy policy systems.
+
+The consumer does not need to know whether a policy originated from:
+
+Guidewire
+Mainframe
+Another policy administration system
+
+The Policy Summary API provides a common interface.
+
+17. Canonical Policy Model
+
+One of the strongest arguments for the new architecture is the ability to create a canonical policy representation.
+
+For example:
+
+                    Policy
+                      |
+        +-------------+-------------+
+        |             |             |
+     Policy        Customer       Vehicle
+     Details                    / Property
+        |
+        +--- Coverage
+        |
+        +--- Premium
+        |
+        +--- Status
+        |
+        +--- Effective Dates
+
+The source systems may have completely different data models.
+
+For example:
+
+Guidewire
+   |
+   +-- Policy
+   +-- Account
+   +-- PolicyPeriod
+   +-- Vehicle
+   +-- Coverage
+
+while a mainframe system may have:
+
+DB2 / IMS
+   |
+   +-- Policy Record
+   +-- Driver Segment
+   +-- Vehicle Segment
+   +-- Coverage Segment
+
+The Policy Read Model can transform these source-specific representations into a common canonical model.
+
+Therefore:
+
+Source-system complexity remains behind the integration boundary instead of being exposed to every consumer.
+
+18. Source-System Independence
+
+One of the primary architectural benefits is source-system independence.
+
+Today:
+
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   +--> Guidewire
+   |
+   +--> Mainframe
+   |
+   +--> Other systems
+
+The API becomes responsible for knowing where information originates.
+
+With the proposed design:
+
+                   +----------------------+
+Guidewire -------->|                      |
+                   |                      |
+Mainframe -------->| Policy Read Model    |
+                   |                      |
+Other Systems ---->|                      |
+                   +----------+-----------+
+                              |
+                              v
+                       Policy Summary API
+                              |
+                              v
+                          Consumers
+
+The API no longer needs to understand the runtime location of every source system.
+
+19. Reduced Coupling
+
+The proposed architecture removes two major forms of coupling.
+
+Current
+Guidewire
+    |
+    | synchronous REST
+    v
+Policy Summary API
+
+and:
+
+Policy Summary API
+    |
+    | synchronous REST
+    v
+Guidewire
+Proposed
+Guidewire
+    |
+    | asynchronous replication / CDC
+    v
+Policy Read Model
+    ^
+    |
+Mainframe / Property / Other Systems
+
+The source systems and consumers are no longer synchronously coupled.
+
+This creates a much cleaner architecture:
+
+Transactional World
+        |
+        | Data replication
+        v
+   Read World
+        |
+        | API
+        v
+ Consumer World
+20. Resiliency Improvement
+
+With the proposed architecture, a temporary outage of Guidewire does not necessarily make the Policy Summary API unavailable.
+
+For example:
+
+Guidewire
+    |
+    X temporarily unavailable
+
+The last successfully replicated policy state remains available in the Policy Read Model.
+
+Therefore:
+
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   v
+Policy Read Model
+   |
+   v
+Last Known Policy State
+
+This allows the read service to continue operating for use cases that can tolerate eventual consistency.
+
+This is a major resiliency improvement.
+
+21. Eventual Consistency
+
+The proposed architecture introduces eventual consistency, which should be explicitly acknowledged.
+
+For example:
+
+10:00:00
+Policy updated in Guidewire
+
+10:00:01
+Change captured by CDC
+
+10:00:02
+Read Model updated
+
+10:00:03
+Consumer sees new policy state
+
+The Policy Read Model may therefore lag the source system by a small amount.
+
+This is an acceptable trade-off for many read-only policy summary use cases.
+
+However, not every use case should necessarily use the Policy Read Model.
+
+A useful architectural rule is:
+
+Use the Policy Read Model for read/query use cases where near-real-time or eventually consistent data is acceptable. Use the transactional source system when authoritative real-time transactional state is required.
+
+This prevents the read model from being incorrectly positioned as a replacement for the system of record.
+
+22. Clear Separation of Responsibilities
+
+The proposed architecture establishes clear responsibilities.
+
+Component	Responsibility
+Policy System	Authoritative policy transactions
+Read Replica / CDC	Replicate source changes
+Data Transformation	Convert source-specific data into canonical representation
+Policy Read Model	Store optimized policy read representation
+Policy Summary API	Expose policy information to consumers
+Consumers	Consume policy information
+
+This is substantially cleaner than having the Policy Summary API perform source-system orchestration during every request.
+
+23. Improved Consumer Experience
+
+Consumers should not need to understand:
+
+Which policy system owns the policy
+Whether it is an Automobile policy
+Whether it is a Property policy
+Whether the policy is on the mainframe
+Which source API to call
+How to handle source-system failures
+Which source-system authentication mechanism is required
+
+Instead:
+
+Consumer
+   |
+   | GET Policy Summary
+   v
+Policy Summary API
+   |
+   v
+Policy Read Model
+
+The consumer receives a consistent interface.
+
+24. Reduced Number of Integrations
+
+The current architecture potentially requires multiple downstream integrations:
+
+Consumer
+   |
+   +--> Guidewire Auto
+   |
+   +--> Guidewire Property
+   |
+   +--> Mainframe
+   |
+   +--> Other Policy Systems
+
+The proposed architecture centralizes data acquisition:
+
+Guidewire Auto ----\
+Guidewire Property --\
+Mainframe ------------> Policy Read Model ---> Policy Summary API
+Other Systems --------/
+
+This changes the integration topology from many consumers × many sources toward one data ingestion boundary + one consumer API.
+
+This can substantially reduce integration complexity.
+
+25. Better Scalability
+
+The Policy Read Model can be independently scaled for read traffic.
+
+For example:
+
+                   Policy Read Model
+                          |
+            +-------------+-------------+
+            |             |             |
+        Consumer A    Consumer B    Consumer C
+            |             |             |
+            +-------------+-------------+
+                          |
+                     High-volume reads
+
+The source transactional systems do not need to scale proportionally with downstream read traffic.
+
+This is particularly important if policy information becomes a common enterprise capability used by:
+
+Customer applications
+Agent applications
+Call center applications
+Underwriting applications
+Claims applications
+Billing applications
+Reporting applications
+Other internal APIs
+26. Operational Benefits
+
+The proposed architecture also improves operational visibility.
+
+The organization can monitor:
+
+Data freshness
+Source Change Time
+        |
+        v
+Replication Time
+        |
+        v
+Read Model Update Time
+
+This allows a measurable data freshness SLA.
+
+For example:
+
+99% of policy changes should be reflected in the Policy Read Model within X seconds/minutes.
+
+This is much easier to manage than an architecture where data is partially cached and partially retrieved dynamically.
+
+27. Improved Disaster Recovery
+
+A centralized read model can also provide an additional recovery capability.
+
+If the source system becomes temporarily unavailable:
+
+Source System
+     X
+     |
+     v
+Policy Read Model
+     |
+     v
+Policy Summary API
+
+The organization can continue supporting read-only use cases from the last known state.
+
+This does not replace the source system's disaster recovery strategy, but it reduces the dependency of downstream read workloads on the immediate availability of the source system.
+
+28. Security Benefits
+
+The architecture can also reduce the number of consumers requiring direct access to transactional systems.
+
+Instead of:
+
+Consumer A ---> Guidewire
+Consumer B ---> Guidewire
+Consumer C ---> Guidewire
+Consumer D ---> Guidewire
+
+the architecture becomes:
+
+Consumer A --\
+Consumer B ---\
+Consumer C ----> Policy Summary API ---> Read Model
+Consumer D ---/
+
+Guidewire access can therefore be restricted to authorized integration components.
+
+This supports the principle of:
+
+Minimize direct access to systems of record.
+
+29. Source System Modernization Independence
+
+The read-model architecture also protects consumers from future modernization.
+
+For example, suppose:
+
+Current:
+
+Mainframe
+   |
+   v
+Policy Read Model
+
+is later replaced by:
+
+New Policy Platform
+   |
+   v
+Policy Read Model
+
+The consumers do not necessarily need to change.
+
+The source-system integration changes behind the Policy Read Model boundary.
+
+This is one of the most important long-term architectural benefits.
+
+30. Avoiding the "Enterprise Cache" Anti-Pattern
+
+The new solution should not simply become another cache.
+
+There is an important distinction.
+
+Cache
+
+A cache generally exists to temporarily store data to improve performance.
+
+Source System
+     |
+     v
+    Cache
+     |
+     v
+Consumer
+
+The source remains the primary runtime dependency.
+
+Read Model
+
+A read model is intentionally constructed to support specific read/query use cases.
+
+Source Systems
+     |
+     | replication
+     v
+Policy Read Model
+     |
+     v
+Consumers
+
+The consumer's normal runtime path does not require the source system.
+
+The proposed Policy Summary architecture should therefore be positioned as a Policy Read Model, not simply a cache.
+
+31. Architectural Principles
+
+The new solution should be governed by several principles.
+
+Principle 1 — Source Systems Remain Systems of Record
+
+Guidewire and mainframe systems remain authoritative for their respective policy transactions.
+
+The read model does not replace them.
+
+Principle 2 — Consumers Should Not Directly Depend on Source Systems
+
+Consumers should access policy information through the Policy Summary capability.
+
+Consumer
+   |
+   v
+Policy Summary API
+
+rather than:
+
+Consumer
+   |
+   v
+Guidewire/Mainframe
+Principle 3 — No Runtime Source-System Dependency for Standard Reads
+
+Normal Policy Summary requests should not require a synchronous call to the source system.
+
+Preferred:
+
+Consumer
+   |
+   v
+Policy Summary API
+   |
+   v
+Policy Read Model
+Principle 4 — Replication Should Be Asynchronous
+
+Source changes should be propagated asynchronously using appropriate mechanisms such as:
+
+CDC
+Replication
+Events
+Messaging
+
+The exact technology can be determined independently from the architectural principle.
+
+Principle 5 — Canonical Model at the Enterprise Boundary
+
+Source-specific representations should be transformed into a canonical Policy model where appropriate.
+
+Principle 6 — Eventual Consistency Must Be Explicit
+
+Each consumer use case should have a defined data freshness requirement.
+
+Principle 7 — Transactional Operations Remain With the Source System
+
+The Policy Read Model should primarily support read/query workloads.
+
+It should not become a mechanism for performing transactional policy updates.
+
+32. Decision Comparison
+Capability	Current Policy Summary	Proposed Policy Read Model
+Automobile	Yes	Yes
+Property	Limited/No	Yes
+Mainframe	No	Yes
+Source runtime dependency	High	Low/None for normal reads
+Read scalability	Limited by source	Independently scalable
+Source-system coupling	High	Reduced
+Consumer coupling	Higher	Lower
+Resiliency	Dependent on source	Improved
+Data model	Source-oriented/partial	Canonical
+Data freshness	Variable	Measurable
+Cross-policy-system view	Difficult	Native capability
+Source-system modernization	Consumer impact possible	Isolated behind ingestion layer
+High-volume reads	Potential source impact	Read-model optimized
+Disaster/outage tolerance	Limited	Improved for read use cases
+33. Target Architecture
+
+The target architecture can be summarized as:
+
+                         SOURCE SYSTEMS
+                              |
+             +----------------+----------------+
+             |                |                |
+             v                v                v
+       Guidewire Auto   Guidewire Property   Mainframe
+             |                |                |
+             v                v                v
+       Read Replica /    Read Replica /    Read Replica /
+            CDC              CDC              CDC
+             |                |                |
+             +----------------+----------------+
+                              |
+                              v
+                    Data Transformation /
+                    Canonicalization Layer
+                              |
+                              v
+                   +----------------------+
+                   | Policy Read Model    |
+                   | / Policy Summary DB  |
+                   +----------+-----------+
+                              |
+                              v
+                   +----------------------+
+                   |  Policy Summary API  |
+                   +----------+-----------+
+                              |
+                +-------------+-------------+
+                |             |             |
+                v             v             v
+            Consumer A    Consumer B    Consumer C
+34. Important Architectural Boundary
+
+The most important architectural boundary is:
+
+              SYSTEM OF RECORD
+                     |
+                     |
+              Replication / CDC
+                     |
+=====================|=====================
+                     |
+                READ DOMAIN
+                     |
+              Policy Read Model
+                     |
+              Policy Summary API
+                     |
+                 Consumers
+
+Everything above the boundary is concerned with maintaining authoritative transactional state.
+
+Everything below the boundary is optimized for consuming policy information.
+
+This separation reduces coupling between the transactional and consumption environments.
+
+35. Migration Approach
+
+The transition does not need to happen as a big-bang replacement.
+
+A phased migration is preferable.
+
+Phase 1 — Establish Read Model
+
+Create the new Policy Read Model and populate it from the existing Automobile source.
+
+Guidewire Auto
+      |
+      v
+Read Replica / CDC
+      |
+      v
+New Policy Read Model
+Phase 2 — Introduce Property
+
+Add Property policy data.
+
+Guidewire Auto --------\
+                        \
+Guidewire Property ------> Policy Read Model
+Phase 3 — Add Mainframe
+
+Introduce the mainframe replication pipeline.
+
+Guidewire Auto --------\
+Guidewire Property -----+--> Policy Read Model
+Mainframe --------------/
+Phase 4 — Migrate Consumers
+
+Consumers gradually move from the existing Policy Summary implementation to the new Policy Summary API/read model.
+
+Phase 5 — Remove Runtime Source Calls
+
+Once data coverage and freshness meet requirements:
+
+Policy Summary API
+        |
+        X
+Source runtime calls
+
+are removed for standard read use cases.
+
+Phase 6 — Retire Legacy Population Pattern
+
+The existing Guidewire REST-based population model can then be retired where it is no longer required.
+
+36. Risks and Mitigations
+
+The proposed architecture does introduce new considerations.
+
+Risk: Eventual Consistency
+
+Risk: The read model may temporarily lag the source system.
+
+Mitigation: Establish explicit freshness SLAs and identify use cases that require authoritative real-time data.
+
+Risk: Data Replication Complexity
+
+Risk: CDC/read-replica pipelines require operational management.
+
+Mitigation: Standardize the ingestion pattern and monitoring across source systems.
+
+Risk: Data Transformation
+
+Risk: Guidewire and mainframe have different data models.
+
+Mitigation: Introduce a canonical policy model and clearly define transformation ownership.
+
+Risk: Duplicate Data
+
+Risk: Policy information exists in both the source system and read model.
+
+Mitigation: Treat the source as authoritative and the read model as a derived representation.
+
+Risk: Stale Data During Outage
+
+Risk: If replication stops, the read model may become stale.
+
+Mitigation: Monitor replication lag and expose operational metrics such as:
+
+Last successful source update
+Last successful replication
+Current replication lag
+Number of failed events
+Number of records pending processing
+37. Recommended NFRs
+
+The new Policy Read Model should have explicit NFRs.
+
+Availability
+
+Define a target availability for the Policy Summary API independent of source-system availability.
+
+Data Freshness
+
+Example:
+
+99% of policy changes should be reflected in the Policy Read Model within X seconds/minutes.
+
+Scalability
+
+The read model should support horizontal scaling for increasing consumer traffic.
+
+Resiliency
+
+Temporary source-system outages should not necessarily make existing policy data unavailable.
+
+Observability
+
+Monitor:
+
+Replication lag
+Processing failures
+Data freshness
+API latency
+API throughput
+Database health
+Consumer error rates
+Security
+
+Consumers should not require direct access to transactional policy systems.
+
+38. Architectural Decision
+Decision
+
+Establish a new Policy Read Model / Policy Summary platform populated through read replicas and/or CDC from all applicable policy source systems, including Guidewire Automobile, Guidewire Property, and mainframe policy systems.
+
+The Policy Summary API should read from this centralized read model rather than synchronously retrieving information from transactional source systems for normal read operations.
+
+Rationale
+
+The current Policy Summary implementation does not fully achieve its original objective of insulating consumers from source systems because the API frequently falls back to source-system calls.
+
+This creates:
+
+Tight runtime coupling
+Availability dependency
+Performance dependency
+Scalability limitations
+Failure propagation
+Inconsistent latency
+Limited policy-domain coverage
+Increased integration complexity
+Difficulty supporting legacy/mainframe data
+Increased impact of future source-system modernization
+
+The proposed read-replica-based architecture establishes a clear separation between:
+
+Systems of Record
+
+and
+
+Policy Read/Consumption Services.
+
+This allows the organization to scale policy reads independently from transactional policy systems while providing a consistent policy view across Automobile, Property, mainframe, and future policy platforms.
+
+39. Final Architectural Position
+
+The key architectural argument is not simply:
+
+"We need a new Policy Summary Database."
+
+The stronger argument is:
+
+The existing Policy Summary API has become a synchronous integration layer to transactional source systems rather than an independent policy read capability. The new architecture should establish a true Policy Read Model that is asynchronously populated from read replicas/CDC across all policy systems.
+
+The target relationship should be:
+
+              TRANSACTIONAL DOMAIN
+                     
+        +-------------------------+
+        | Guidewire Auto          |
+        | Guidewire Property      |
+        | Mainframe               |
+        | Future Policy Systems   |
+        +------------+------------+
+                     |
+                     | CDC / Replication
+                     v
+              +-------------+
+              | Read Model  |
+              +------+------+
+                     |
+                     v
+              +-------------+
+              | Policy      |
+              | Summary API |
+              +------+------+
+                     |
+                     v
+                 Consumers
+
+The fundamental architectural principle is:
+
+Do not make a consumer's read request travel through the transactional system when the requirement is to retrieve previously established policy information. Replicate the required data into a purpose-built read model and serve the consumer from that read model.
+
+This architecture preserves the source systems as authoritative systems of record while providing a scalable, resilient, source-independent policy information layer for enterprise consumers.
